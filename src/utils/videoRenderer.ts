@@ -399,12 +399,115 @@ export class VideoRenderer {
         transitionEffect: trans,
       });
 
-      // Next slot starts before current ends to allow seamless transition overlap
-      cursor += Math.max(0.5, duration - transDuration);
+      // Contiguous non-overlapping timeline: next slot starts exactly when current ends
+      cursor += duration;
       slotIdx++;
     }
 
     this.sceneSlots = slots;
+  }
+
+  public getSlots(): SceneSlot[] {
+    return [...this.sceneSlots];
+  }
+
+  public getLoadedMedia(): LoadedMediaItem[] {
+    return [...this.loadedMedia];
+  }
+
+  public getAudioBuffers(): { speech: AudioBuffer | null; music: AudioBuffer | null } {
+    return { speech: this.speechBuffer, music: this.musicBuffer };
+  }
+
+  public updateSlotDuration(slotIndex: number, newDuration: number): void {
+    if (slotIndex < 0 || slotIndex >= this.sceneSlots.length) return;
+    const clamped = Math.max(1.0, Math.min(30.0, Number(newDuration.toFixed(1))));
+    this.sceneSlots[slotIndex].duration = clamped;
+    this.recalculateSlotTimings();
+    this.renderFrame(this.currentTime);
+    this.notifyState();
+  }
+
+  public moveBoundary(slotIndex: number, deltaSeconds: number): void {
+    if (slotIndex < 0 || slotIndex >= this.sceneSlots.length) return;
+    const slotA = this.sceneSlots[slotIndex];
+    const slotB = this.sceneSlots[slotIndex + 1];
+
+    if (slotB) {
+      const targetDurA = Math.max(1.0, Math.min(30.0, slotA.duration + deltaSeconds));
+      const actualDelta = targetDurA - slotA.duration;
+      const targetDurB = Math.max(1.0, Math.min(30.0, slotB.duration - actualDelta));
+      const finalDelta = slotB.duration - targetDurB;
+
+      slotA.duration = Number((slotA.duration + finalDelta).toFixed(1));
+      slotB.duration = Number(targetDurB.toFixed(1));
+    } else {
+      slotA.duration = Math.max(1.0, Math.min(30.0, Number((slotA.duration + deltaSeconds).toFixed(1))));
+    }
+
+    this.recalculateSlotTimings();
+    this.renderFrame(this.currentTime);
+    this.notifyState();
+  }
+
+  public reorderSlots(fromIndex: number, toIndex: number): void {
+    if (
+      fromIndex < 0 ||
+      fromIndex >= this.sceneSlots.length ||
+      toIndex < 0 ||
+      toIndex >= this.sceneSlots.length ||
+      fromIndex === toIndex
+    ) {
+      return;
+    }
+    const moved = this.sceneSlots.splice(fromIndex, 1)[0];
+    this.sceneSlots.splice(toIndex, 0, moved);
+    this.recalculateSlotTimings();
+    this.renderFrame(this.currentTime);
+    this.notifyState();
+  }
+
+  private recalculateSlotTimings(): void {
+    let cursor = 0;
+    for (let i = 0; i < this.sceneSlots.length; i++) {
+      const slot = this.sceneSlots[i];
+      slot.index = i;
+      slot.startTime = Number(cursor.toFixed(2));
+      slot.duration = Number(slot.duration.toFixed(1));
+      slot.endTime = Number((cursor + slot.duration).toFixed(2));
+      slot.transitionDuration = Math.min(slot.duration * 0.25, 1.2);
+      cursor += slot.duration;
+    }
+
+    const targetEnd = this.totalDuration + 15;
+    const n = this.loadedMedia.length;
+    if (n > 0) {
+      const zoomChoices: ZoomEffectType[] = ['zoom-in', 'zoom-out', 'dramatic-pulse', 'slow-drift'];
+      const panChoices: PanEffectType[] = ['diagonal-drift', 'pan-left', 'pan-right', 'drift-up'];
+      const transChoices: TransitionEffectType[] = ['light-leaks', 'glitch', 'crossfade', 'zoom-blur', 'film-burn'];
+
+      let slotIdx = this.sceneSlots.length;
+      while (cursor < targetEnd) {
+        const media = this.loadedMedia[slotIdx % n];
+        let duration = media.type === 'video' && media.duration > 0 ? media.duration : 4.0;
+        const transDuration = Math.min(duration * 0.25, 1.2);
+        this.sceneSlots.push({
+          index: slotIdx,
+          imageIndex: slotIdx % n,
+          mediaIndex: slotIdx % n,
+          startTime: Number(cursor.toFixed(2)),
+          duration: Number(duration.toFixed(1)),
+          endTime: Number((cursor + duration).toFixed(2)),
+          transitionDuration: transDuration,
+          zoomEffect: this.zoomEffectConfig === 'random' ? zoomChoices[slotIdx % zoomChoices.length] : this.zoomEffectConfig,
+          panEffect: this.panEffectConfig === 'random' ? panChoices[slotIdx % panChoices.length] : this.panEffectConfig,
+          colorGrade: this.colorGradeConfig,
+          transitionEffect: this.transitionConfig === 'random' ? transChoices[slotIdx % transChoices.length] : this.transitionConfig,
+        });
+        cursor += duration;
+        slotIdx++;
+      }
+    }
   }
 
   public setAudioBuffers(speech: AudioBuffer | null, music: AudioBuffer | null) {

@@ -84,6 +84,10 @@ export interface VideoProjectConfig {
   imageTimingMode?: 'random' | 'fixed';
   fixedSceneDuration?: number; // In seconds (1 to 20s) when in fixed mode
 
+  // Silence Timing Mode: 'random' | 'fixed'
+  silenceTimingMode?: 'random' | 'fixed';
+  fixedSilenceDuration?: number; // In seconds (0.5 to 20s) when in fixed mode
+
   // Random duration range per image in scene (between 1 and 20 seconds)
   minSceneDuration: number;
   maxSceneDuration: number;

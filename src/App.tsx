@@ -55,6 +55,8 @@ export default function App() {
     sceneDuration: 3.5,
     minSceneDuration: 2.0,
     maxSceneDuration: 5.0,
+    silenceTimingMode: 'random',
+    fixedSilenceDuration: 2.0,
     minSilence: 1.0,
     maxSilence: 2.5,
     voiceEnabled: true,
@@ -202,7 +204,10 @@ export default function App() {
               </span>
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-950/60 border border-neutral-800">
                 <Shuffle className="w-3.5 h-3.5 text-amber-400" />
-                Silencios: {config.minSilence?.toFixed(1)}s - {config.maxSilence?.toFixed(1)}s
+                Silencios:{' '}
+                {config.silenceTimingMode === 'fixed'
+                  ? `${(config.fixedSilenceDuration ?? 2.0).toFixed(1)}s (Fijo)`
+                  : `${config.minSilence?.toFixed(1)}s - ${config.maxSilence?.toFixed(1)}s`}
               </span>
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-950/60 border border-neutral-800">
                 <Clock className="w-3.5 h-3.5 text-amber-400" />

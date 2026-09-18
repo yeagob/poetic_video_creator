@@ -24,7 +24,7 @@ import {
   VideoProjectConfig,
   ZoomEffectType,
 } from '../types';
-import { RenderState, VideoRenderer } from '../utils/videoRenderer';
+import { RenderState, VideoRenderer, SceneSlot, LoadedMediaItem } from '../utils/videoRenderer';
 import { exportVideoclipHighQuality } from '../utils/videoExporter';
 import {
   assembleSpeechTimeline,
@@ -37,6 +37,7 @@ import {
   TRANSITION_OPTIONS,
   ZOOM_EFFECT_OPTIONS,
 } from '../data/presets';
+import { GeneratedTrackEditor } from './GeneratedTrackEditor';
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
@@ -80,6 +81,10 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   // Live real-time audio volumes in player
   const [localSpeechVol, setLocalSpeechVol] = useState<number>(config.speechVolume);
   const [localMusicVol, setLocalMusicVol] = useState<number>(config.musicVolume);
+
+  // Editable Track Slots and Loaded Media for the timeline editor
+  const [slotsList, setSlotsList] = useState<SceneSlot[]>([]);
+  const [loadedMediaList, setLoadedMediaList] = useState<LoadedMediaItem[]>([]);
 
   // Live effect controls in player
   const [localTransition, setLocalTransition] = useState<TransitionEffectType>(config.transitionEffect || 'light-leaks');
@@ -155,6 +160,15 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         const isImagesEnabled = config.imagesEnabled ?? true;
 
         // Step 1: Request TTS block-by-block with random silences and exact subtitles
+        const effectiveMinSilence =
+          config.silenceTimingMode === 'fixed'
+            ? (config.fixedSilenceDuration ?? 2.0)
+            : (config.minSilence ?? 1.0);
+        const effectiveMaxSilence =
+          config.silenceTimingMode === 'fixed'
+            ? (config.fixedSilenceDuration ?? 2.0)
+            : (config.maxSilence ?? 2.4);
+
         setLoadingStep(
           isVoiceEnabled
             ? 'Sintetizando versos poéticos por bloques y sincronizando subtítulos...'
@@ -168,8 +182,8 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             gender: config.gender,
             intonation: config.intonation,
             presetVoice: config.presetVoice,
-            minSilence: config.minSilence ?? 1.0,
-            maxSilence: config.maxSilence ?? 2.4,
+            minSilence: effectiveMinSilence,
+            maxSilence: effectiveMaxSilence,
             voiceEnabled: isVoiceEnabled,
           }),
         });
@@ -209,8 +223,8 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             if (decodedBlocks.length > 0) {
               const assembled = assembleSpeechTimeline(
                 decodedBlocks,
-                config.minSilence ?? 1.0,
-                config.maxSilence ?? 2.4,
+                effectiveMinSilence,
+                effectiveMaxSilence,
                 config.gender === 'male'
               );
 
@@ -292,6 +306,10 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           },
         });
 
+        // Initialize editor slots and loaded media for visual track editor
+        setSlotsList(engine.getSlots());
+        setLoadedMediaList(engine.getLoadedMedia());
+
         setIsLoading(false);
 
         // Autoplay
@@ -335,6 +353,29 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     if (!engineRef.current) return;
     const target = parseFloat(e.target.value);
     engineRef.current.seek(target);
+  };
+
+  const handleUpdateSlotDuration = (slotIdx: number, newDur: number) => {
+    if (!engineRef.current) return;
+    engineRef.current.updateSlotDuration(slotIdx, newDur);
+    setSlotsList(engineRef.current.getSlots());
+  };
+
+  const handleReorderSlots = (fromIdx: number, toIdx: number) => {
+    if (!engineRef.current) return;
+    engineRef.current.reorderSlots(fromIdx, toIdx);
+    setSlotsList(engineRef.current.getSlots());
+  };
+
+  const handleMoveBoundary = (slotIdx: number, deltaSec: number) => {
+    if (!engineRef.current) return;
+    engineRef.current.moveBoundary(slotIdx, deltaSec);
+    setSlotsList(engineRef.current.getSlots());
+  };
+
+  const handleSeekFromTrack = (timeSeconds: number) => {
+    if (!engineRef.current) return;
+    engineRef.current.seek(timeSeconds);
   };
 
   const handleExport = async () => {
@@ -711,6 +752,25 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           </div>
         )}
       </div>
+
+      {/* Visual Media and Audio Track Editor Section */}
+      {!isLoading && !errorMessage && slotsList.length > 0 && (
+        <div className="max-w-5xl w-full mx-auto my-3">
+          <GeneratedTrackEditor
+            slots={slotsList}
+            loadedMedia={loadedMediaList}
+            currentTime={renderState.currentTime}
+            totalDuration={renderState.totalDuration}
+            isPlaying={renderState.isPlaying}
+            subtitles={subtitlesList}
+            onSeek={handleSeekFromTrack}
+            onTogglePlay={handleTogglePlay}
+            onUpdateSlotDuration={handleUpdateSlotDuration}
+            onReorderSlots={handleReorderSlots}
+            onMoveBoundary={handleMoveBoundary}
+          />
+        </div>
+      )}
 
       {/* Subtitles Timeline Drawer / Cues Preview */}
       {!isLoading && !errorMessage && subtitlesList.length > 0 && (
