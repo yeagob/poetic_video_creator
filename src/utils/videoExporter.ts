@@ -75,7 +75,7 @@ export async function exportVideoclipHighQuality(
   }
 
   // Step 3: Multiplex video and audio into a standardized MP4 using server-side FFmpeg
-  onProgress(85, 'Finalizando codificación MP4 de alta compatibilidad (FFmpeg)...');
+  onProgress(85, 'Ensamblando MP4 final en servidor con FFmpeg...');
   try {
     const formData = new FormData();
     formData.append('video', videoBlob, 'video.webm');
@@ -137,11 +137,31 @@ async function renderWithWebCodecs(
     }
   }
 
+  // Detect supported video codec
+  let selectedCodec = 'vp09.00.10.08';
+  let muxerVideoCodec: 'V_VP9' | 'V_VP8' = 'V_VP9';
+  try {
+    const isVp9Supported = await (window as any).VideoEncoder.isConfigSupported({
+      codec: 'vp09.00.10.08',
+      width,
+      height,
+      bitrate: 4_500_000,
+      framerate: fps,
+    });
+    if (!isVp9Supported?.supported) {
+      selectedCodec = 'vp8';
+      muxerVideoCodec = 'V_VP8';
+    }
+  } catch {
+    selectedCodec = 'vp8';
+    muxerVideoCodec = 'V_VP8';
+  }
+
   const target = new WebMMuxer.ArrayBufferTarget();
   const muxerOptions: any = {
     target,
     video: {
-      codec: 'V_VP9',
+      codec: muxerVideoCodec,
       width,
       height,
       frameRate: fps,
@@ -158,23 +178,6 @@ async function renderWithWebCodecs(
 
   const muxer = new WebMMuxer.Muxer(muxerOptions);
 
-  // Detect supported video codec
-  let selectedCodec = 'vp09.00.10.08';
-  try {
-    const isVp9Supported = await (window as any).VideoEncoder.isConfigSupported({
-      codec: 'vp09.00.10.08',
-      width,
-      height,
-      bitrate: 5_000_000,
-      framerate: fps,
-    });
-    if (!isVp9Supported.supported) {
-      selectedCodec = 'vp8';
-    }
-  } catch {
-    selectedCodec = 'vp8';
-  }
-
   let encoderError: any = null;
   const videoEncoder = new (window as any).VideoEncoder({
     output: (chunk: any, meta: any) => muxer.addVideoChunk(chunk, meta),
@@ -188,7 +191,7 @@ async function renderWithWebCodecs(
     codec: selectedCodec,
     width,
     height,
-    bitrate: 5_000_000,
+    bitrate: 4_500_000,
     framerate: fps,
   });
 
@@ -249,9 +252,16 @@ async function renderWithWebCodecs(
     }
   }
 
-  // Render EVERY single frame deterministically
+  // Render EVERY single frame deterministically with strict GPU memory backpressure
   for (let k = 0; k < totalFrames; k++) {
     if (encoderError) throw encoderError;
+
+    // Strict backpressure: wait for mobile GPU / hardware encoder to process queued frames
+    // Prevents accumulating hundreds of uncompressed RGBA frame buffers in RAM (down from ~740MB to ~7.4MB)
+    while (videoEncoder.encodeQueueSize > 2) {
+      await new Promise((resolve) => setTimeout(resolve, 8));
+      if (encoderError) throw encoderError;
+    }
 
     const time = Math.min(totalDuration, k / fps);
     renderer.renderFrame(time);
@@ -262,10 +272,13 @@ async function renderWithWebCodecs(
     });
 
     const isKeyFrame = k % 45 === 0;
-    videoEncoder.encode(videoFrame, { keyFrame: isKeyFrame });
-    videoFrame.close();
+    try {
+      videoEncoder.encode(videoFrame, { keyFrame: isKeyFrame });
+    } finally {
+      videoFrame.close();
+    }
 
-    // Yield control every 4 frames so browser UI updates and stays responsive
+    // Yield control every 4 frames so browser UI updates and Garbage Collector can reclaim resources
     if (k % 4 === 0 || k === totalFrames - 1) {
       const pct = Math.round((k / totalFrames) * 75) + 10;
       onProgress(pct, `Componiendo fotograma ${k + 1} de ${totalFrames} (${pct}%)...`);

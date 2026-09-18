@@ -1,22 +1,96 @@
 import { ImageItem, IntonationOption, MusicTrack, VoicePreset } from '../types';
 
-export const VOICE_PRESETS: Record<'male' | 'female', VoicePreset> = {
-  male: {
+export const RECOMMENDED_MALE_VOICES: VoicePreset[] = [
+  {
     id: 'male-algieba',
-    name: 'Algieba — Barítono Solemne y Profundo',
+    name: 'Algieba (Por defecto)',
     gender: 'male',
     geminiVoice: 'Algieba',
-    description: 'Tono noble, potente, resonante y solemne. Ideal para declamación poética majestuosa y reflexiva.',
-    badge: 'Voz Masculina Algieba',
+    description: 'Barítono suave, solemne y nítido. Extraordinaria dicción y cadencia poética en español.',
+    badge: 'Recomendado en Español',
+    isDefault: true,
   },
-  female: {
+  {
+    id: 'male-charon',
+    name: 'Charon — Grave y Sereno',
+    gender: 'male',
+    geminiVoice: 'Charon',
+    description: 'Tono noble, reposado y profundo. Ideal para reflexiones poéticas con peso emocional.',
+    badge: 'Recomendado en Español',
+  },
+  {
+    id: 'male-orus',
+    name: 'Orus — Firme y Maduro',
+    gender: 'male',
+    geminiVoice: 'Orus',
+    description: 'Timbre maduro, sobrio y equilibrado con excelente articulación castellana.',
+    badge: 'Recomendado en Español',
+  },
+  {
+    id: 'male-fenrir',
+    name: 'Fenrir — Enérgico y Resonante',
+    gender: 'male',
+    geminiVoice: 'Fenrir',
+    description: 'Voz intensa y poderosa con timbre vibrante para versos de alta carga dramática.',
+    badge: 'Recomendado en Español',
+  },
+  {
+    id: 'male-puck',
+    name: 'Puck — Claro y Ágil',
+    gender: 'male',
+    geminiVoice: 'Puck',
+    description: 'Tono juvenil, fluido y directo, muy natural y cercano en la pronunciación.',
+    badge: 'Recomendado en Español',
+  },
+];
+
+export const RECOMMENDED_FEMALE_VOICES: VoicePreset[] = [
+  {
     id: 'female-kore',
-    name: 'Kore — Cálida y Expresiva',
+    name: 'Kore (Por defecto)',
     gender: 'female',
     geminiVoice: 'Kore',
-    description: 'Tono envolvente, rico en matices, emotivo y lírico. Perfecta para versos poéticos con hondura.',
-    badge: 'Voz Femenina Poética',
+    description: 'Voz cálida, envolvente y lírica. Gran expresividad y belleza tonal en español.',
+    badge: 'Recomendado en Español',
+    isDefault: true,
   },
+  {
+    id: 'female-aoede',
+    name: 'Aoede — Melódica y Poética',
+    gender: 'female',
+    geminiVoice: 'Aoede',
+    description: 'Cadencia dulce, melódica y fresca con excelente fluidez poética.',
+    badge: 'Recomendado en Español',
+  },
+  {
+    id: 'female-despina',
+    name: 'Despina — Íntima y Cálida',
+    gender: 'female',
+    geminiVoice: 'Despina',
+    description: 'Tono suave, susurrado y reflexivo, perfecto para versos intimistas.',
+    badge: 'Recomendado en Español',
+  },
+  {
+    id: 'female-zephyr',
+    name: 'Zephyr — Brillante y Clara',
+    gender: 'female',
+    geminiVoice: 'Zephyr',
+    description: 'Timbre luminoso, definido y radiante con entonación muy limpia.',
+    badge: 'Recomendado en Español',
+  },
+  {
+    id: 'female-vindemiatrix',
+    name: 'Vindemiatrix — Solemne y Soberana',
+    gender: 'female',
+    geminiVoice: 'Vindemiatrix',
+    description: 'Tono pausado, maduro y sosegado para poemas de contemplación mística.',
+    badge: 'Recomendado en Español',
+  },
+];
+
+export const VOICE_PRESETS: Record<'male' | 'female', VoicePreset> = {
+  male: RECOMMENDED_MALE_VOICES[0],
+  female: RECOMMENDED_FEMALE_VOICES[0],
 };
 
 export const INTONATION_OPTIONS: IntonationOption[] = [

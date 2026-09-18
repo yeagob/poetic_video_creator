@@ -317,7 +317,10 @@ app.post('/api/tts', async (req, res) => {
   }
 
   const isMale = gender === 'male';
-  const voiceName = presetVoice || (isMale ? 'Algieba' : 'Kore');
+  let voiceName = presetVoice || (isMale ? 'Algieba' : 'Kore');
+  if (typeof voiceName === 'string' && voiceName.toLowerCase().replace(/ie/g, 'i') === 'algiba') {
+    voiceName = 'Algieba';
+  }
 
   const rawIntonation = (intonation || '').replace(/:+$/, '').trim();
   const instruction = rawIntonation

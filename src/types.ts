@@ -36,9 +36,10 @@ export interface VoicePreset {
   id: string;
   name: string;
   gender: VoiceGender;
-  geminiVoice: 'Algieba' | 'Fenrir' | 'Kore' | 'Charon' | 'Zephyr' | 'Puck';
+  geminiVoice: string;
   description: string;
   badge: string;
+  isDefault?: boolean;
 }
 
 export interface IntonationOption {
@@ -102,7 +103,7 @@ export interface VideoProjectConfig {
   imagesEnabled: boolean;
 
   gender: VoiceGender;
-  presetVoice: 'Algieba' | 'Fenrir' | 'Kore';
+  presetVoice: string;
   intonation: string;
 
   // Audio balance
