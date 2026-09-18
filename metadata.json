@@ -1,0 +1,7 @@
+{
+  "name": "Poetic Videoclip Studio",
+  "description": "Crea videoclips dinámicos combinando texto poético con voz TTS potente, música de fondo y transiciones de imágenes con subtítulos sincronizados.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
